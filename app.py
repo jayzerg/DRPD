@@ -2,10 +2,118 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import numpy as np
 from datetime import datetime
 
 # Page configuration
-st.set_page_config(page_title="Dynamic Retail Dashboard", layout="wide")
+st.set_page_config(page_title="Dynamic Retail Dashboard", layout="wide", page_icon="📊")
+
+# ── Executive Slate Design System (Theme-Adaptive) ─────────────────────
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* ── Base Typography ─────────────────────────────────── */
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    
+    h1 { font-weight: 700; letter-spacing: -0.03em; }
+    h2 { font-weight: 600; letter-spacing: -0.02em; font-size: 1.3rem; }
+    h3 { font-weight: 500; }
+    
+    /* ── KPI Metric Cards ────────────────────────────────── */
+    [data-testid="stMetric"] {
+        background: rgba(128, 128, 128, 0.06);
+        border-radius: 12px;
+        padding: 1rem 1.2rem;
+        border: 1px solid rgba(128, 128, 128, 0.15);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.8rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        opacity: 0.65;
+    }
+    [data-testid="stMetricValue"] {
+        font-weight: 700 !important;
+    }
+    
+    /* ── Sidebar ─────────────────────────────────────────── */
+    [data-testid="stSidebar"] {
+        border-right: 1px solid rgba(128, 128, 128, 0.15);
+    }
+    
+    /* ── Expanders ────────────────────────────────────────── */
+    [data-testid="stExpander"] {
+        border: 1px solid rgba(128, 128, 128, 0.15);
+        border-radius: 12px;
+    }
+    
+    /* ── Multiselect Tags (replaces default red) ─────────── */
+    span[data-baseweb="tag"] {
+        background-color: #3b82f6 !important;
+        color: #ffffff !important;
+        border-radius: 6px !important;
+        border: none !important;
+    }
+    span[data-baseweb="tag"]:hover {
+        background-color: #2563eb !important;
+    }
+    /* Tag close button */
+    span[data-baseweb="tag"] span[role="presentation"] {
+        color: rgba(255, 255, 255, 0.75) !important;
+    }
+    span[data-baseweb="tag"] span[role="presentation"]:hover {
+        color: #ffffff !important;
+    }
+    
+    /* ── Download Button ─────────────────────────────────── */
+    .stDownloadButton button {
+        background: #3b82f6 !important;
+        color: white !important;
+        border-radius: 8px;
+        font-weight: 500;
+        border: none !important;
+        transition: all 0.2s ease;
+    }
+    .stDownloadButton button:hover {
+        background: #2563eb !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+    }
+    
+    /* ── Tab Navigation ──────────────────────────────────── */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.5rem;
+        border-bottom: 2px solid rgba(128, 128, 128, 0.2);
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        padding: 0.6rem 1.2rem;
+        font-weight: 500;
+    }
+    
+    /* ── Alerts ───────────────────────────────────────────── */
+    [data-testid="stAlert"] {
+        border-radius: 10px;
+        border-left-width: 4px;
+    }
+    
+    /* ── Dividers ─────────────────────────────────────────── */
+    hr {
+        border: none;
+        height: 1px;
+        background: linear-gradient(to right, transparent, rgba(128, 128, 128, 0.25), transparent);
+        margin: 1.5rem 0;
+    }
+    
+    /* ── Cleanup ──────────────────────────────────────────── */
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+</style>
+""", unsafe_allow_html=True)
+
+# Executive Color Palette
+EXEC_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16']
 
 # Title
 st.title("📊 Dynamic Retail Performance Dashboard")
@@ -15,7 +123,6 @@ st.markdown("---")
 st.sidebar.header("Upload Data Settings")
 uploaded_file = st.sidebar.file_uploader("Choose a CSV or Excel file", type=["csv", "xlsx"])
 skip_rows = st.sidebar.number_input("Found headers at row #", min_value=0, value=0, help="If columns are 'Unnamed', try increasing this.")
-
 
 
 if uploaded_file is not None:
@@ -29,20 +136,15 @@ if uploaded_file is not None:
                 file.seek(0)
                 df = pd.read_csv(file, encoding='latin1', skiprows=skip, error_bad_lines=False, warn_bad_lines=True)
         else:
-            # Handle potential header issues in Excel
             df = pd.read_excel(file, engine='openpyxl', skiprows=skip)
-            # Clean up: strip whitespace from column names
             df.columns = [str(c).strip() for c in df.columns]
         
-        # Quick check for mostly empty columns/rows often found in messy Excel exports
         df = df.dropna(how='all', axis=1).dropna(how='all', axis=0)
         return df
 
-
-    
     df = load_data(uploaded_file, skip_rows)
     
-    # Feature 4: Enterprise Dashboard Customization
+    # Enterprise Dashboard Customization
     with st.sidebar.expander("⚙️ Dashboard Preferences", expanded=False):
         theme_choice = st.radio("Color Theme", ["Light (Plotly White)", "Dark (Plotly Dark)"], index=0)
         global_theme = "plotly_white" if "Light" in theme_choice else "plotly_dark"
@@ -55,13 +157,10 @@ if uploaded_file is not None:
         categorical_columns = []
         
         for col in df.columns:
-            # Skip if empty
             if df[col].isnull().all():
                 continue
 
-            # Try to detect date columns if not already numeric
             if 'date' in col.lower() or 'ship' in col.lower() or 'order' in col.lower():
-                # Avoid re-converting if already datetime
                 if not pd.api.types.is_datetime64_any_dtype(df[col]):
                     try:
                         temp_date = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
@@ -75,42 +174,34 @@ if uploaded_file is not None:
                     date_columns.append(col)
                     continue
 
-            # Detect ID and Metadata columns explicitly based on naming heuristics 
             col_lower = col.lower().strip()
             is_metadata = ('id' == col_lower or col_lower.endswith(' id') or col_lower.endswith('_id') or 
                          'name' == col_lower or col_lower.endswith(' name') or col_lower.endswith('_name') or
                          'email' in col_lower or 'phone' in col_lower or 'address' in col_lower)
             
             if is_metadata:
-                # Force converting numeric IDs to strings prevents accidental plot summations
                 df[col] = df[col].astype(str)
                 categorical_columns.append(col)
                 continue
 
-            # Detect numeric columns
             if pd.api.types.is_numeric_dtype(df[col]):
-                # If it's effectively a boolean or has very few values and column name doesn't suggest metric, skip for cat
                 if df[col].nunique() < 10 and not any(x in col_lower for x in ['sales', 'profit', 'quantity', 'amount', 'price', 'cost']):
                     categorical_columns.append(col)
                 else:
                     numeric_columns.append(col)
             else:
-                # Try to convert object to numeric if it looks numeric
                 try:
-                    # Remove currency symbols and commas
                     temp_num = df[col].astype(str).str.replace(r'[$,]', '', regex=True)
                     temp_num = pd.to_numeric(temp_num, errors='coerce')
-                    if temp_num.notna().sum() / len(temp_num) > 0.5: # If > 50% is numeric
+                    if temp_num.notna().sum() / len(temp_num) > 0.5:
                         df[col] = temp_num
                         numeric_columns.append(col)
                         continue
                 except:
                     pass
 
-                # Detect categorical columns: Allow text categories, bounding cardinality to 300 to avoid memory exhaustion
                 if df[col].nunique() < 300: 
                     categorical_columns.append(col)
-
         
         return date_columns, numeric_columns, categorical_columns
     
@@ -131,494 +222,480 @@ if uploaded_file is not None:
         
         st.write("**Raw Pandas Column Types:**")
         st.code(str(df.dtypes))
-
         
         st.write("**Sample Data:**")
         st.dataframe(df.head())
     
-    # Sidebar filters - dynamically created
+    # ── Sidebar Filters ────────────────────────────────────────────────
     st.sidebar.header("Filters")
     
     df_filtered = df.copy()
     
     # 1. Categorical Filters (Hierarchical Drill-down)
-    st.sidebar.subheader("🗂️ Categorical Filters")
-    viable_filter_cols = [c for c in cat_cols if df[c].nunique() > 0 and df[c].nunique() <= 60]
-    
-    for col in viable_filter_cols[:5]:  # Limit to first 5 valid categorical columns
-        options = sorted([str(x) for x in df_filtered[col].dropna().unique()])
-        if not options: continue
-        selected_vals = st.sidebar.multiselect(
-            f"Select {col}",
-            options=options,
-            default=options
-        )
-        if selected_vals:
-            df_filtered = df_filtered[df_filtered[col].astype(str).isin(selected_vals)]
+    with st.sidebar.expander("🗂️ Categorical Filters", expanded=True):
+        viable_filter_cols = [c for c in cat_cols if df[c].nunique() > 0 and df[c].nunique() <= 60]
+        
+        for col in viable_filter_cols[:5]:
+            options = sorted([str(x) for x in df_filtered[col].dropna().unique()])
+            if not options: continue
+            selected_vals = st.multiselect(
+                f"Select {col}",
+                options=options,
+                default=options,
+                key=f"filter_{col}"
+            )
+            if selected_vals:
+                df_filtered = df_filtered[df_filtered[col].astype(str).isin(selected_vals)]
             
     # 2. Metric Filters (Quantitative Thresholds)
     if numeric_cols:
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("🔢 Metric Filters")
-        primary_metric = numeric_cols[0]
-        min_val = float(df_filtered[primary_metric].min())
-        max_val = float(df_filtered[primary_metric].max())
-        
-        if min_val < max_val:
-            metric_range = st.sidebar.slider(
-                f"Filter by {primary_metric}",
-                min_value=min_val,
-                max_value=max_val,
-                value=(min_val, max_val)
-            )
-            df_filtered = df_filtered[
-                (df_filtered[primary_metric] >= metric_range[0]) & 
-                (df_filtered[primary_metric] <= metric_range[1])
-            ]
+        with st.sidebar.expander("🔢 Metric Thresholds", expanded=False):
+            primary_metric = numeric_cols[0]
+            min_val = float(df_filtered[primary_metric].min())
+            max_val = float(df_filtered[primary_metric].max())
+            
+            if min_val < max_val:
+                metric_range = st.slider(
+                    f"Filter by {primary_metric}",
+                    min_value=min_val,
+                    max_value=max_val,
+                    value=(min_val, max_val)
+                )
+                df_filtered = df_filtered[
+                    (df_filtered[primary_metric] >= metric_range[0]) & 
+                    (df_filtered[primary_metric] <= metric_range[1])
+                ]
 
     # Save state before date filtering for PoP delta calculations
     df_pre_date = df_filtered.copy()
     prev_start, prev_end = None, None
             
-    # 3. Global Date Filter (Filters out epoch anomalies like 1970 by default)
+    # 3. Global Date Filter
     if date_cols:
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("📅 Date Range")
-        primary_date = date_cols[0]
-        
-        # Safely determine valid date bounds - ignoring epoch parsing artifacts (year <= 1970)
-        valid_dates = df_filtered[primary_date].dropna()
-        valid_dates = valid_dates[valid_dates.dt.year > 1970]
-        
-        if not valid_dates.empty:
-            min_date = valid_dates.min().date()
-            max_date = valid_dates.max().date()
+        with st.sidebar.expander("📅 Date Range", expanded=True):
+            primary_date = date_cols[0]
             
-            if min_date < max_date:
-                start_date, end_date = st.sidebar.slider(
-                    "Filter Timeframe",
-                    min_value=min_date,
-                    max_value=max_date,
-                    value=(min_date, max_date)
-                )
+            valid_dates = df_filtered[primary_date].dropna()
+            valid_dates = valid_dates[valid_dates.dt.year > 1970]
+            
+            if not valid_dates.empty:
+                min_date = valid_dates.min().date()
+                max_date = valid_dates.max().date()
                 
-                # Apply the chronological constraint globally across the dashboard
-                df_filtered = df_filtered[
-                    (df_filtered[primary_date].dt.date >= start_date) & 
-                    (df_filtered[primary_date].dt.date <= end_date)
-                ]
-                
-                # Calculate Previous Period Timeframe for Delta Comparisons
-                period_length = end_date - start_date
-                prev_start = start_date - period_length - pd.Timedelta(days=1)
-                prev_end = start_date - pd.Timedelta(days=1)
+                if min_date < max_date:
+                    start_date, end_date = st.slider(
+                        "Filter Timeframe",
+                        min_value=min_date,
+                        max_value=max_date,
+                        value=(min_date, max_date)
+                    )
+                    
+                    df_filtered = df_filtered[
+                        (df_filtered[primary_date].dt.date >= start_date) & 
+                        (df_filtered[primary_date].dt.date <= end_date)
+                    ]
+                    
+                    period_length = end_date - start_date
+                    prev_start = start_date - period_length - pd.Timedelta(days=1)
+                    prev_end = start_date - pd.Timedelta(days=1)
     
     # Check if data is available
     if df_filtered.empty:
         st.warning("⚠️ No data available based on the current filter settings!")
         st.stop()
     
-    # KPI Metrics - automatically select key metrics
-    if numeric_cols:
-        st.subheader("📈 Key Performance Indicators")
-        
-        # Display available metrics
-        num_metrics = min(4, len(numeric_cols))
-        if num_metrics > 0:
-            metric_cols = st.columns(num_metrics)
-            
-            for i, col in enumerate(numeric_cols[:4]):  # Show first 4 numeric columns
-                total_val = df_filtered[col].sum()
-                
-                # Comparative Analytics: Calculate PoP Delta
-                delta_str = None
-                if prev_start and prev_end and date_cols:
-                    df_prev = df_pre_date[
-                        (df_pre_date[primary_date].dt.date >= prev_start) & 
-                        (df_pre_date[primary_date].dt.date <= prev_end)
-                    ]
-                    prev_total = df_prev[col].sum()
-                    if prev_total > 0:
-                        pct_change = ((total_val - prev_total) / prev_total) * 100
-                        delta_str = f"{pct_change:+.1f}% vs Prev Period"
-                else:
-                    # Provide average if no delta comparison exists
-                    avg_val = df_filtered[col].mean()
-                    delta_str = f"Avg: {avg_val:,.2f}"
-                    
-                metric_cols[i].metric(
-                    f"Total {col}",
-                    f"${total_val:,.2f}" if total_val > 100 else f"{total_val:,.2f}",
-                    delta=delta_str,
-                    delta_color="normal" if "Prev Period" in str(delta_str) else "off"
-                )
-        st.markdown("---")
-    else:
-        st.info("💡 No numeric columns found for KPI calculations.")
-
-    # 🤖 AI Insights (Data Storytelling)
-    if numeric_cols and len(df_filtered) > 0:
-        st.info("🤖 **AI Insights**")
-        insights = []
-        
-        # Insight 1: Top performing category (if cat cols exist)
-        if cat_cols:
-            primary_cat = cat_cols[0]
-            primary_num = numeric_cols[0]
-            top_cat_val = df_filtered.groupby(primary_cat)[primary_num].sum().idxmax()
-            top_cat_sum = df_filtered.groupby(primary_cat)[primary_num].sum().max()
-            total_sum = df_filtered[primary_num].sum()
-            if total_sum > 0:
-                pct_contribution = (top_cat_sum / total_sum) * 100
-                insights.append(f"• The top performing **{primary_cat}** is **{top_cat_val}**, driving **{pct_contribution:.1f}%** of total {primary_num}.")
-        
-        # Insight 2: Profitability / Risk warning (if 'profit' exists)
-        profit_col = next((c for c in numeric_cols if 'profit' in c.lower()), None)
-        if profit_col and cat_cols:
-            profit_by_cat = df_filtered.groupby(cat_cols[0])[profit_col].sum()
-            negative_cats = profit_by_cat[profit_by_cat < 0]
-            if not negative_cats.empty:
-                worst_cat = negative_cats.idxmin()
-                insights.append(f"• ⚠️ **Warning**: The {cat_cols[0]} *{worst_cat}* is operating at a net loss (Total {profit_col}: ${negative_cats.min():,.2f}).")
-            else:
-                insights.append(f"• ✅ Good health: All segments within {cat_cols[0]} are operating with positive net {profit_col}.")
-        
-        # Insight 3: Metric correlations
-        if len(numeric_cols) >= 2:
-            x_col, y_col = numeric_cols[0], numeric_cols[1]
-            corr = df_filtered[x_col].corr(df_filtered[y_col])
-            if abs(corr) > 0.6:
-                direction = "strong positive" if corr > 0 else "strong negative"
-                insights.append(f"• There is a **{direction} correlation ({corr:.2f})** between {x_col} and {y_col}.")
-                
-        if not insights:
-            insights.append("• Data is evenly distributed with no stark anomalies detected in this view.")
-            
-        st.markdown("\n".join(insights))
-        st.markdown("---")
-
+    # ══════════════════════════════════════════════════════════════════
+    # TABBED DASHBOARD NAVIGATION
+    # ══════════════════════════════════════════════════════════════════
+    tab_overview, tab_analytics, tab_intelligence, tab_data = st.tabs([
+        "📈 Overview", "📊 Analytics", "🧠 Intelligence", "📄 Data"
+    ])
     
-    # Visualization Section
-    st.subheader("📊 Visualizations")
-    
-    # Row 1: Bar chart and Line chart
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Distribution Analysis")
-        if cat_cols and numeric_cols:
-            # Let user choose or auto-select
-            cat_choice = st.selectbox("Select Category Column", cat_cols, key="bar_cat")
-            num_choice = st.selectbox("Select Metric Column", numeric_cols, key="bar_num")
-            
-            agg_data = df_filtered.groupby(cat_choice)[num_choice].sum().reset_index()
-            fig_bar = px.bar(agg_data, x=cat_choice, y=num_choice, 
-                           color=cat_choice, template=global_theme)
-            st.plotly_chart(fig_bar, use_container_width=True)
-        else:
-            st.info("💡 Requires at least one categorical and one numeric column.")
-
-    
-    with col2:
-        st.subheader("Trend Analysis")
-        if date_cols and numeric_cols:
-            date_choice = st.selectbox("Select Date Column", date_cols, key="line_date")
-            num_choice_trend = st.selectbox("Select Metric", numeric_cols, key="line_num")
-            
-            # Allow user to select chronological aggregation level
-            agg_level = st.selectbox("Aggregation Level", ["Daily", "Weekly", "Monthly", "Yearly"], index=2, key="line_agg")
-            
-            # Drop invalid dates and proactively remove any remaining zero-epoch parsing artifacts
-            df_trend = df_filtered.dropna(subset=[date_choice]).copy()
-            df_trend = df_trend[df_trend[date_choice].dt.year > 1970]
-            df_trend = df_trend.sort_values(by=date_choice)
-            
-            # Resample dates based on selection to reduce data points
-            if agg_level == "Daily":
-                df_trend[date_choice] = df_trend[date_choice].dt.floor('D')
-            elif agg_level == "Weekly":
-                df_trend[date_choice] = df_trend[date_choice].dt.to_period('W').dt.start_time
-            elif agg_level == "Monthly":
-                df_trend[date_choice] = df_trend[date_choice].dt.to_period('M').dt.start_time
-            elif agg_level == "Yearly":
-                df_trend[date_choice] = df_trend[date_choice].dt.to_period('Y').dt.start_time
-            
-            # Group by resampled date
-            time_data = df_trend.groupby(date_choice)[num_choice_trend].sum().reset_index()
-            time_data['Type'] = 'Historical'
-            
-            show_forecast = st.checkbox("📈 Display 3-Period Forecast", value=False)
-            
-            @st.cache_data
-            def compute_forecast(data, date_col, metric_col, periods=3):
-                import numpy as np
-                y = data[metric_col].values
-                x = np.arange(len(y))
-                if len(y) < 3: return None
-                
-                # Simple linear regression
-                coeffs = np.polyfit(x, y, 1)
-                poly_eqn = np.poly1d(coeffs)
-                
-                future_x = np.arange(len(y), len(y) + periods)
-                forecast_y = poly_eqn(future_x)
-                
-                # Extend dates chronologically
-                last_date = data[date_col].iloc[-1]
-                date_diffs = data[date_col].diff().dropna()
-                if len(date_diffs) == 0: return None
-                avg_diff = date_diffs.mean()
-                future_dates = [last_date + avg_diff * i for i in range(1, periods + 1)]
-                
-                # To connect the line smoothly natively in Plotly, we start the forecast from the last historical coordinate
-                forecast_df = pd.DataFrame({
-                    date_col: [last_date] + future_dates,
-                    metric_col: [y[-1]] + list(forecast_y),
-                    'Type': 'Forecast'
-                })
-                return forecast_df
-
-            if show_forecast:
-                forecast_df = compute_forecast(time_data[[date_choice, num_choice_trend]], date_choice, num_choice_trend, periods=3)
-                if forecast_df is not None:
-                    time_data = pd.concat([time_data, forecast_df], ignore_index=True)
-            
-            # Automated Anomaly Detection
-            import numpy as np
-            time_data['Is_Anomaly'] = False
-            
-            if len(time_data[time_data['Type'] == 'Historical']) > 4:
-                hist_mask = time_data['Type'] == 'Historical'
-                mean_val = time_data.loc[hist_mask, num_choice_trend].mean()
-                std_val = time_data.loc[hist_mask, num_choice_trend].std()
-                
-                # Anomaly condition: > 2 standard deviations
-                anomaly_mask = hist_mask & (np.abs(time_data[num_choice_trend] - mean_val) > 2 * std_val)
-                time_data.loc[anomaly_mask, 'Is_Anomaly'] = True
-            
-            # Turn off markers for very large datasets to prevent visually broken graphs
-            use_markers = len(time_data) <= 60
-            
-            color_map = {'Historical': '#1f77b4', 'Forecast': '#ff7f0e'}
-            fig_line = px.line(time_data, x=date_choice, y=num_choice_trend, color='Type',
-                             color_discrete_map=color_map, markers=use_markers, template=global_theme)
-                             
-            # Highlight Anomalies dynamically
-            anomalies = time_data[time_data['Is_Anomaly']]
-            if not anomalies.empty:
-                fig_line.add_trace(go.Scatter(
-                    x=anomalies[date_choice],
-                    y=anomalies[num_choice_trend],
-                    mode='markers',
-                    marker=dict(color='red', size=12, symbol='x', line=dict(width=2, color='DarkRed')),
-                    name='Anomaly (>2 SD)'
-                ))
-                             
-            # Enforce dashed overlay specifically for forecast
-            fig_line.for_each_trace(lambda trace: trace.update(line=dict(dash='dash')) if trace.name == 'Forecast' else ())
-            
-            st.plotly_chart(fig_line, use_container_width=True)
-        else:
-            st.info("💡 Requires at least one date and one numeric column.")
-    
-    # Row 2: Pie chart and Scatter plot
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Category Breakdown")
-        if cat_cols and numeric_cols:
-            cat_pie = st.selectbox("Select Grouping Column", cat_cols, key="pie_cat")
-            num_pie = st.selectbox("Select Value Column", numeric_cols, key="pie_num")
-            
-            pie_data = df_filtered.groupby(cat_pie)[num_pie].sum().reset_index()
-            fig_pie = px.pie(pie_data, values=num_pie, names=cat_pie,
-                           template=global_theme)
-            st.plotly_chart(fig_pie, use_container_width=True)
-        else:
-            st.info("💡 Requires at least one categorical and one numeric column.")
-    
-    with col2:
-        st.subheader("Correlation Analysis")
-        if len(numeric_cols) >= 2:
-            # Generate advanced correlation heatmap
-            try:
-                corr_matrix = df_filtered[numeric_cols].corr()
-                fig_corr = px.imshow(
-                    corr_matrix, 
-                    text_auto=".2f", 
-                    aspect="auto",
-                    color_continuous_scale="RdBu",
-                    template=global_theme
-                )
-                st.plotly_chart(fig_corr, use_container_width=True)
-            except Exception as e:
-                st.error(f"Could not generate correlation matrix: {e}")
-        else:
-            st.info("💡 Requires at least two numeric columns.")
-                
-    # Row 3: Top items
-    st.subheader("🏆 Top Items Analysis")
-    if cat_cols and numeric_cols:
-        top_cat = st.selectbox("Select Category for Top Analysis", cat_cols, key="top_cat")
-        top_num = st.selectbox("Select Metric", numeric_cols, key="top_num")
-        top_n = st.slider("Number of Top Items", 5, 20, 10)
-        
-        top_data = df_filtered.groupby(top_cat)[top_num].sum().nlargest(top_n).reset_index()
-        fig_top = px.bar(top_data, x=top_num, y=top_cat, orientation='h',
-                        color=top_num, template=global_theme)
-        st.plotly_chart(fig_top, use_container_width=True)
-        
-    st.markdown("---")
-    
-    ml_col, geo_col = st.columns(2)
-    
-    with ml_col:
-        # Machine Learning Key Driver Analysis
-        st.subheader("🧠 ML Predictive Driver Analysis")
-        if numeric_cols and len(df_filtered) > 50:
-            ml_target = next((c for c in numeric_cols if 'profit' in c.lower()), numeric_cols[0])
-            ml_target = st.selectbox("Select Target Metric to Predict", numeric_cols, index=numeric_cols.index(ml_target), key="ml_target")
-            
-            @st.cache_data
-            def run_driver_analysis(data, target_col, cats, nums):
-                try:
-                    from sklearn.ensemble import RandomForestRegressor
-                    from sklearn.model_selection import train_test_split
-                    
-                    # Prepare Dataset
-                    ml_data = data.copy()
-                    features = [c for c in nums if c != target_col]
-                    
-                    # Encode categorical limited by cardinality
-                    cat_features = []
-                    for c in cats[:3]:
-                        if ml_data[c].nunique() < 15: # strict dummy bound
-                            cat_features.append(c)
-                            
-                    if cat_features:
-                        ml_data = pd.get_dummies(ml_data, columns=cat_features, drop_first=True)
-                        features.extend([c for c in ml_data.columns if any(c.startswith(f"{orig_c}_") for orig_c in cat_features)])
-                            
-                    X = ml_data[features].fillna(0)
-                    y = ml_data[target_col].fillna(0)
-                    
-                    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-                    
-                    model = RandomForestRegressor(n_estimators=50, random_state=42, n_jobs=-1)
-                    model.fit(X_train, y_train)
-                    
-                    r2 = model.score(X_test, y_test)
-                    importances = model.feature_importances_
-                    
-                    imp_df = pd.DataFrame({'Feature': features, 'Importance': importances})
-                    imp_df = imp_df.sort_values(by='Importance', ascending=False).head(5)
-                    
-                    return imp_df, r2
-                except ImportError:
-                    return "missing_sklearn", None
-                except Exception as e:
-                    return str(e), None
-
-            with st.spinner("Training Driver Model..."):
-                imp_result, r_squared = run_driver_analysis(df_filtered, ml_target, cat_cols, numeric_cols)
-                
-                if isinstance(imp_result, str):
-                    if imp_result == "missing_sklearn":
-                        st.warning("⚠️ Scikit-Learn is not installed. Please run `pip install scikit-learn` enabling ML.")
-                    else:
-                        st.error(f"Error computing model: {imp_result}")
-                else:
-                    st.success(f"**Model Accuracy (R²):** {r_squared:.2f}")
-                    fig_ml = px.bar(imp_result, x='Importance', y='Feature', orientation='h', template=global_theme)
-                    fig_ml.update_layout(yaxis={'categoryorder':'total ascending'})
-                    st.plotly_chart(fig_ml, use_container_width=True)
-        else:
-            st.info("💡 Requires at least 50 rows of data and numeric columns.")
-            
-    with geo_col:
-        # Interactive Geospatial Analytics
-        st.subheader("🌍 Geospatial Analytics")
-        geo_col_candidates = [c for c in cat_cols if any(heuristic in c.lower() for heuristic in ['state', 'city', 'country', 'region'])]
-        if geo_col_candidates and numeric_cols:
-            geo_choice = st.selectbox("Select Geographical Column", geo_col_candidates, key="geo_cat")
-            geo_metric = st.selectbox("Select Map Metric", numeric_cols, key="geo_num")
-            
-            geo_data = df_filtered.groupby(geo_choice)[geo_metric].sum().reset_index()
-            
-            geo_type = st.radio("Map Style", ["Scatter (Bubbles)", "Choropleth (Filled Regions)"], horizontal=True)
-            
-            try:
-                if "Scatter" in geo_type:
-                    fig_geo = px.scatter_geo(geo_data, locations=geo_choice, locationmode='USA-states',
-                                           size=geo_metric, color=geo_metric, template=global_theme, scope="usa")
-                else:
-                    fig_geo = px.choropleth(geo_data, locations=geo_choice, locationmode='USA-states',
-                                          color=geo_metric, template=global_theme, scope="usa")
-                
-                fig_geo.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-                st.plotly_chart(fig_geo, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Could not map '{geo_choice}' to standard locations. {e}")
-        else:
-            st.info("💡 No definitive geographic columns detected (e.g. State, City).")
-    
-    # Strategic What-If Simulator
-    st.markdown("---")
-    with st.expander("🔮 Strategic What-If Simulator", expanded=False):
+    # ──────────────────────────────────────────────────────────────────
+    # TAB 1: OVERVIEW — KPIs + AI Insights
+    # ──────────────────────────────────────────────────────────────────
+    with tab_overview:
         if numeric_cols:
-            profit_col = next((c for c in numeric_cols if 'profit' in c.lower()), None)
-            revenue_col = next((c for c in numeric_cols if 'sales' in c.lower()), numeric_cols[0])
+            st.subheader("📈 Key Performance Indicators")
             
-            st.markdown("Adjust parameters below to mathematically simulate future operational scenarios based on the current aggregated trajectory.")
-            w1, w2 = st.columns(2)
-            cost_reduction = w1.slider("Projected Cost Reduction (%)", min_value=0.0, max_value=30.0, value=5.0, step=0.5)
-            sales_growth = w2.slider("Target Sales Growth (%)", min_value=-50.0, max_value=100.0, value=10.0, step=1.0)
-            
-            current_revenue = df_filtered[revenue_col].sum()
-            current_profit = df_filtered[profit_col].sum() if profit_col in df_filtered else (current_revenue * 0.15)
-            metric_label = profit_col if profit_col else 'Inferred Profit'
-            
-            # Math
-            simulated_revenue = current_revenue * (1 + sales_growth/100)
-            current_cost = current_revenue - current_profit
-            # If sales grow, cost grows proportionally, but is mitigated by cost reduction factor
-            simulated_cost = current_cost * (1 + sales_growth/100) * (1 - cost_reduction/100)
-            simulated_profit = simulated_revenue - simulated_cost
-            
-            sim_df = pd.DataFrame({
-                'Metric': [revenue_col.capitalize(), revenue_col.capitalize(), metric_label.capitalize(), metric_label.capitalize()],
-                'Scenario': ['Current Trajectory', 'Simulated Scenario', 'Current Trajectory', 'Simulated Scenario'],
-                'Value': [current_revenue, simulated_revenue, current_profit, simulated_profit]
-            })
-            
-            fig_sim = px.bar(sim_df, x='Metric', y='Value', color='Scenario', barmode='group',
-                            text_auto='.2s', template=global_theme)
-            # Custom formatting
-            fig_sim.update_traces(textposition='outside')
-            
-            st.plotly_chart(fig_sim, use_container_width=True)
+            num_metrics = min(4, len(numeric_cols))
+            if num_metrics > 0:
+                metric_cols = st.columns(num_metrics)
+                
+                for i, col in enumerate(numeric_cols[:4]):
+                    total_val = df_filtered[col].sum()
+                    
+                    delta_str = None
+                    if prev_start and prev_end and date_cols:
+                        df_prev = df_pre_date[
+                            (df_pre_date[primary_date].dt.date >= prev_start) & 
+                            (df_pre_date[primary_date].dt.date <= prev_end)
+                        ]
+                        prev_total = df_prev[col].sum()
+                        if prev_total > 0:
+                            pct_change = ((total_val - prev_total) / prev_total) * 100
+                            delta_str = f"{pct_change:+.1f}% vs Prev Period"
+                    else:
+                        avg_val = df_filtered[col].mean()
+                        delta_str = f"Avg: {avg_val:,.2f}"
+                        
+                    metric_cols[i].metric(
+                        f"Total {col}",
+                        f"${total_val:,.2f}" if total_val > 100 else f"{total_val:,.2f}",
+                        delta=delta_str,
+                        delta_color="normal" if "Prev Period" in str(delta_str) else "off"
+                    )
+            st.markdown("---")
         else:
-            st.info("💡 Requires numeric columns for simulation.")
+            st.info("💡 No numeric columns found for KPI calculations.")
 
-    # Data table
-    st.markdown("---")
-    st.subheader("📄 Data Table")
-    if st.checkbox("Show Raw Data"):
-        st.dataframe(df_filtered)
+        # 🤖 AI Insights (Data Storytelling)
+        if numeric_cols and len(df_filtered) > 0:
+            st.info("🤖 **AI Insights**")
+            insights = []
+            
+            if cat_cols:
+                primary_cat = cat_cols[0]
+                primary_num = numeric_cols[0]
+                top_cat_val = df_filtered.groupby(primary_cat)[primary_num].sum().idxmax()
+                top_cat_sum = df_filtered.groupby(primary_cat)[primary_num].sum().max()
+                total_sum = df_filtered[primary_num].sum()
+                if total_sum > 0:
+                    pct_contribution = (top_cat_sum / total_sum) * 100
+                    insights.append(f"• The top performing **{primary_cat}** is **{top_cat_val}**, driving **{pct_contribution:.1f}%** of total {primary_num}.")
+            
+            profit_col = next((c for c in numeric_cols if 'profit' in c.lower()), None)
+            if profit_col and cat_cols:
+                profit_by_cat = df_filtered.groupby(cat_cols[0])[profit_col].sum()
+                negative_cats = profit_by_cat[profit_by_cat < 0]
+                if not negative_cats.empty:
+                    worst_cat = negative_cats.idxmin()
+                    insights.append(f"• ⚠️ **Warning**: The {cat_cols[0]} *{worst_cat}* is operating at a net loss (Total {profit_col}: ${negative_cats.min():,.2f}).")
+                else:
+                    insights.append(f"• ✅ Good health: All segments within {cat_cols[0]} are operating with positive net {profit_col}.")
+            
+            if len(numeric_cols) >= 2:
+                x_col, y_col = numeric_cols[0], numeric_cols[1]
+                corr = df_filtered[x_col].corr(df_filtered[y_col])
+                if abs(corr) > 0.6:
+                    direction = "strong positive" if corr > 0 else "strong negative"
+                    insights.append(f"• There is a **{direction} correlation ({corr:.2f})** between {x_col} and {y_col}.")
+                    
+            if not insights:
+                insights.append("• Data is evenly distributed with no stark anomalies detected in this view.")
+                
+            st.markdown("\n".join(insights))
+
+    # ──────────────────────────────────────────────────────────────────
+    # TAB 2: ANALYTICS — Charts & Visualizations
+    # ──────────────────────────────────────────────────────────────────
+    with tab_analytics:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Distribution Analysis")
+            if cat_cols and numeric_cols:
+                c1, c2 = st.columns(2)
+                cat_choice = c1.selectbox("Category", cat_cols, key="bar_cat")
+                num_choice = c2.selectbox("Metric", numeric_cols, key="bar_num")
+                
+                agg_data = df_filtered.groupby(cat_choice)[num_choice].sum().reset_index()
+                fig_bar = px.bar(agg_data, x=cat_choice, y=num_choice, 
+                               color=cat_choice, template=global_theme,
+                               color_discrete_sequence=EXEC_COLORS)
+                fig_bar.update_layout(showlegend=False)
+                st.plotly_chart(fig_bar, use_container_width=True)
+            else:
+                st.info("💡 Requires at least one categorical and one numeric column.")
+
+        with col2:
+            st.subheader("Trend Analysis")
+            if date_cols and numeric_cols:
+                t1, t2, t3 = st.columns(3)
+                date_choice = t1.selectbox("Date Column", date_cols, key="line_date")
+                num_choice_trend = t2.selectbox("Metric", numeric_cols, key="line_num")
+                agg_level = t3.selectbox("Aggregation", ["Daily", "Weekly", "Monthly", "Yearly"], index=2, key="line_agg")
+                
+                df_trend = df_filtered.dropna(subset=[date_choice]).copy()
+                df_trend = df_trend[df_trend[date_choice].dt.year > 1970]
+                df_trend = df_trend.sort_values(by=date_choice)
+                
+                if agg_level == "Daily":
+                    df_trend[date_choice] = df_trend[date_choice].dt.floor('D')
+                elif agg_level == "Weekly":
+                    df_trend[date_choice] = df_trend[date_choice].dt.to_period('W').dt.start_time
+                elif agg_level == "Monthly":
+                    df_trend[date_choice] = df_trend[date_choice].dt.to_period('M').dt.start_time
+                elif agg_level == "Yearly":
+                    df_trend[date_choice] = df_trend[date_choice].dt.to_period('Y').dt.start_time
+                
+                time_data = df_trend.groupby(date_choice)[num_choice_trend].sum().reset_index()
+                time_data['Type'] = 'Historical'
+                
+                show_forecast = st.checkbox("📈 Display 3-Period Forecast", value=False)
+                
+                @st.cache_data
+                def compute_forecast(data, date_col, metric_col, periods=3):
+                    y = data[metric_col].values
+                    x = np.arange(len(y))
+                    if len(y) < 3: return None
+                    
+                    coeffs = np.polyfit(x, y, 1)
+                    poly_eqn = np.poly1d(coeffs)
+                    
+                    future_x = np.arange(len(y), len(y) + periods)
+                    forecast_y = poly_eqn(future_x)
+                    
+                    last_date = data[date_col].iloc[-1]
+                    date_diffs = data[date_col].diff().dropna()
+                    if len(date_diffs) == 0: return None
+                    avg_diff = date_diffs.mean()
+                    future_dates = [last_date + avg_diff * i for i in range(1, periods + 1)]
+                    
+                    forecast_df = pd.DataFrame({
+                        date_col: [last_date] + future_dates,
+                        metric_col: [y[-1]] + list(forecast_y),
+                        'Type': 'Forecast'
+                    })
+                    return forecast_df
+
+                if show_forecast:
+                    forecast_df = compute_forecast(time_data[[date_choice, num_choice_trend]], date_choice, num_choice_trend, periods=3)
+                    if forecast_df is not None:
+                        time_data = pd.concat([time_data, forecast_df], ignore_index=True)
+                
+                # Anomaly Detection
+                time_data['Is_Anomaly'] = False
+                if len(time_data[time_data['Type'] == 'Historical']) > 4:
+                    hist_mask = time_data['Type'] == 'Historical'
+                    mean_val = time_data.loc[hist_mask, num_choice_trend].mean()
+                    std_val = time_data.loc[hist_mask, num_choice_trend].std()
+                    anomaly_mask = hist_mask & (np.abs(time_data[num_choice_trend] - mean_val) > 2 * std_val)
+                    time_data.loc[anomaly_mask, 'Is_Anomaly'] = True
+                
+                use_markers = len(time_data) <= 60
+                
+                color_map = {'Historical': '#3b82f6', 'Forecast': '#f59e0b'}
+                fig_line = px.line(time_data, x=date_choice, y=num_choice_trend, color='Type',
+                                 color_discrete_map=color_map, markers=use_markers, template=global_theme)
+                                 
+                anomalies = time_data[time_data['Is_Anomaly']]
+                if not anomalies.empty:
+                    fig_line.add_trace(go.Scatter(
+                        x=anomalies[date_choice],
+                        y=anomalies[num_choice_trend],
+                        mode='markers',
+                        marker=dict(color='#ef4444', size=12, symbol='x', line=dict(width=2, color='#b91c1c')),
+                        name='Anomaly (>2 SD)'
+                    ))
+                                 
+                fig_line.for_each_trace(lambda trace: trace.update(line=dict(dash='dash')) if trace.name == 'Forecast' else ())
+                
+                st.plotly_chart(fig_line, use_container_width=True)
+            else:
+                st.info("💡 Requires at least one date and one numeric column.")
+        
+        st.markdown("---")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Category Breakdown")
+            if cat_cols and numeric_cols:
+                p1, p2 = st.columns(2)
+                cat_pie = p1.selectbox("Grouping Column", cat_cols, key="pie_cat")
+                num_pie = p2.selectbox("Value Column", numeric_cols, key="pie_num")
+                
+                pie_data = df_filtered.groupby(cat_pie)[num_pie].sum().reset_index()
+                fig_pie = px.pie(pie_data, values=num_pie, names=cat_pie,
+                               template=global_theme, color_discrete_sequence=EXEC_COLORS)
+                st.plotly_chart(fig_pie, use_container_width=True)
+            else:
+                st.info("💡 Requires at least one categorical and one numeric column.")
+        
+        with col2:
+            st.subheader("Correlation Matrix")
+            if len(numeric_cols) >= 2:
+                try:
+                    corr_matrix = df_filtered[numeric_cols].corr()
+                    fig_corr = px.imshow(
+                        corr_matrix, 
+                        text_auto=".2f", 
+                        aspect="auto",
+                        color_continuous_scale="RdBu",
+                        template=global_theme
+                    )
+                    st.plotly_chart(fig_corr, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Could not generate correlation matrix: {e}")
+            else:
+                st.info("💡 Requires at least two numeric columns.")
     
-    # Download option
-    csv = df_filtered.to_csv(index=False)
-    st.download_button(
-        label="📥 Download Filtered Data as CSV",
-        data=csv,
-        file_name='filtered_data.csv',
-        mime='text/csv'
-    )
+    # ──────────────────────────────────────────────────────────────────
+    # TAB 3: INTELLIGENCE — ML, Geo, What-If, Top Items
+    # ──────────────────────────────────────────────────────────────────
+    with tab_intelligence:
+        st.subheader("🏆 Top Items Analysis")
+        if cat_cols and numeric_cols:
+            t1, t2, t3 = st.columns([2, 2, 1])
+            top_cat = t1.selectbox("Category for Ranking", cat_cols, key="top_cat")
+            top_num = t2.selectbox("Metric", numeric_cols, key="top_num")
+            top_n = t3.slider("Top N", 5, 20, 10)
+            
+            top_data = df_filtered.groupby(top_cat)[top_num].sum().nlargest(top_n).reset_index()
+            fig_top = px.bar(top_data, x=top_num, y=top_cat, orientation='h',
+                            color=top_num, template=global_theme,
+                            color_continuous_scale=['#93c5fd', '#1d4ed8'])
+            st.plotly_chart(fig_top, use_container_width=True)
+            
+        st.markdown("---")
+        
+        ml_col, geo_col = st.columns(2)
+        
+        with ml_col:
+            st.subheader("🧠 ML Predictive Driver Analysis")
+            if numeric_cols and len(df_filtered) > 50:
+                ml_target = next((c for c in numeric_cols if 'profit' in c.lower()), numeric_cols[0])
+                ml_target = st.selectbox("Target Metric to Predict", numeric_cols, index=numeric_cols.index(ml_target), key="ml_target")
+                
+                @st.cache_data
+                def run_driver_analysis(data, target_col, cats, nums):
+                    try:
+                        from sklearn.ensemble import RandomForestRegressor
+                        from sklearn.model_selection import train_test_split
+                        
+                        ml_data = data.copy()
+                        features = [c for c in nums if c != target_col]
+                        
+                        cat_features = []
+                        for c in cats[:3]:
+                            if ml_data[c].nunique() < 15:
+                                cat_features.append(c)
+                                
+                        if cat_features:
+                            ml_data = pd.get_dummies(ml_data, columns=cat_features, drop_first=True)
+                            features.extend([c for c in ml_data.columns if any(c.startswith(f"{orig_c}_") for orig_c in cat_features)])
+                                
+                        X = ml_data[features].fillna(0)
+                        y = ml_data[target_col].fillna(0)
+                        
+                        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+                        
+                        model = RandomForestRegressor(n_estimators=50, random_state=42, n_jobs=-1)
+                        model.fit(X_train, y_train)
+                        
+                        r2 = model.score(X_test, y_test)
+                        importances = model.feature_importances_
+                        
+                        imp_df = pd.DataFrame({'Feature': features, 'Importance': importances})
+                        imp_df = imp_df.sort_values(by='Importance', ascending=False).head(5)
+                        
+                        return imp_df, r2
+                    except ImportError:
+                        return "missing_sklearn", None
+                    except Exception as e:
+                        return str(e), None
+
+                with st.spinner("Training Driver Model..."):
+                    imp_result, r_squared = run_driver_analysis(df_filtered, ml_target, cat_cols, numeric_cols)
+                    
+                    if isinstance(imp_result, str):
+                        if imp_result == "missing_sklearn":
+                            st.warning("⚠️ Scikit-Learn is not installed. Run `pip install scikit-learn`.")
+                        else:
+                            st.error(f"Error computing model: {imp_result}")
+                    else:
+                        st.success(f"**Model Accuracy (R²):** {r_squared:.2f}")
+                        fig_ml = px.bar(imp_result, x='Importance', y='Feature', orientation='h', 
+                                       template=global_theme, color_discrete_sequence=['#3b82f6'])
+                        fig_ml.update_layout(yaxis={'categoryorder':'total ascending'})
+                        st.plotly_chart(fig_ml, use_container_width=True)
+            else:
+                st.info("💡 Requires at least 50 rows of data and numeric columns.")
+                
+        with geo_col:
+            st.subheader("🌍 Geospatial Analytics")
+            geo_col_candidates = [c for c in cat_cols if any(heuristic in c.lower() for heuristic in ['state', 'city', 'country', 'region'])]
+            if geo_col_candidates and numeric_cols:
+                geo_choice = st.selectbox("Geographical Column", geo_col_candidates, key="geo_cat")
+                geo_metric = st.selectbox("Map Metric", numeric_cols, key="geo_num")
+                
+                geo_data = df_filtered.groupby(geo_choice)[geo_metric].sum().reset_index()
+                
+                geo_type = st.radio("Map Style", ["Scatter (Bubbles)", "Choropleth (Filled Regions)"], horizontal=True)
+                
+                try:
+                    if "Scatter" in geo_type:
+                        fig_geo = px.scatter_geo(geo_data, locations=geo_choice, locationmode='USA-states',
+                                               size=geo_metric, color=geo_metric, template=global_theme, scope="usa")
+                    else:
+                        fig_geo = px.choropleth(geo_data, locations=geo_choice, locationmode='USA-states',
+                                              color=geo_metric, template=global_theme, scope="usa")
+                    
+                    fig_geo.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+                    st.plotly_chart(fig_geo, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"Could not map '{geo_choice}' to standard locations. {e}")
+            else:
+                st.info("💡 No definitive geographic columns detected (e.g. State, City).")
+        
+        st.markdown("---")
+        
+        # Strategic What-If Simulator
+        with st.expander("🔮 Strategic What-If Simulator", expanded=False):
+            if numeric_cols:
+                profit_col = next((c for c in numeric_cols if 'profit' in c.lower()), None)
+                revenue_col = next((c for c in numeric_cols if 'sales' in c.lower()), numeric_cols[0])
+                
+                st.markdown("Adjust parameters below to mathematically simulate future operational scenarios based on the current aggregated trajectory.")
+                w1, w2 = st.columns(2)
+                cost_reduction = w1.slider("Projected Cost Reduction (%)", min_value=0.0, max_value=30.0, value=5.0, step=0.5)
+                sales_growth = w2.slider("Target Sales Growth (%)", min_value=-50.0, max_value=100.0, value=10.0, step=1.0)
+                
+                current_revenue = df_filtered[revenue_col].sum()
+                current_profit = df_filtered[profit_col].sum() if profit_col in df_filtered else (current_revenue * 0.15)
+                metric_label = profit_col if profit_col else 'Inferred Profit'
+                
+                simulated_revenue = current_revenue * (1 + sales_growth/100)
+                current_cost = current_revenue - current_profit
+                simulated_cost = current_cost * (1 + sales_growth/100) * (1 - cost_reduction/100)
+                simulated_profit = simulated_revenue - simulated_cost
+                
+                sim_df = pd.DataFrame({
+                    'Metric': [revenue_col.capitalize(), revenue_col.capitalize(), metric_label.capitalize(), metric_label.capitalize()],
+                    'Scenario': ['Current Trajectory', 'Simulated Scenario', 'Current Trajectory', 'Simulated Scenario'],
+                    'Value': [current_revenue, simulated_revenue, current_profit, simulated_profit]
+                })
+                
+                fig_sim = px.bar(sim_df, x='Metric', y='Value', color='Scenario', barmode='group',
+                                text_auto='.2s', template=global_theme,
+                                color_discrete_sequence=['#3b82f6', '#10b981'])
+                fig_sim.update_traces(textposition='outside')
+                
+                st.plotly_chart(fig_sim, use_container_width=True)
+            else:
+                st.info("💡 Requires numeric columns for simulation.")
+
+    # ──────────────────────────────────────────────────────────────────
+    # TAB 4: DATA — Raw Table + Export
+    # ──────────────────────────────────────────────────────────────────
+    with tab_data:
+        st.subheader("📄 Filtered Dataset")
+        st.caption(f"Showing **{len(df_filtered):,}** rows × **{len(df_filtered.columns)}** columns after all active filters.")
+        st.dataframe(df_filtered, use_container_width=True)
+        
+        st.markdown("---")
+        csv = df_filtered.to_csv(index=False)
+        st.download_button(
+            label="📥 Download Filtered Data as CSV",
+            data=csv,
+            file_name='filtered_data.csv',
+            mime='text/csv'
+        )
 
 else:
     st.info("👆 Please upload a CSV or Excel file to get started!")
     
-    # Show example
     st.markdown("### Example CSV Structure:")
     example_df = pd.DataFrame({
         'Order Date': ['01/01/2023', '02/01/2023'],
