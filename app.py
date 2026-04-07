@@ -71,10 +71,22 @@ if uploaded_file is not None:
                     date_columns.append(col)
                     continue
 
+            # Detect ID and Metadata columns explicitly based on naming heuristics 
+            col_lower = col.lower().strip()
+            is_metadata = ('id' == col_lower or col_lower.endswith(' id') or col_lower.endswith('_id') or 
+                         'name' == col_lower or col_lower.endswith(' name') or col_lower.endswith('_name') or
+                         'email' in col_lower or 'phone' in col_lower or 'address' in col_lower)
+            
+            if is_metadata:
+                # Force converting numeric IDs to strings prevents accidental plot summations
+                df[col] = df[col].astype(str)
+                categorical_columns.append(col)
+                continue
+
             # Detect numeric columns
             if pd.api.types.is_numeric_dtype(df[col]):
                 # If it's effectively a boolean or has very few values and column name doesn't suggest metric, skip for cat
-                if df[col].nunique() < 10 and not any(x in col.lower() for x in ['sales', 'profit', 'quantity', 'amount', 'price', 'cost']):
+                if df[col].nunique() < 10 and not any(x in col_lower for x in ['sales', 'profit', 'quantity', 'amount', 'price', 'cost']):
                     categorical_columns.append(col)
                 else:
                     numeric_columns.append(col)
@@ -91,8 +103,8 @@ if uploaded_file is not None:
                 except:
                     pass
 
-                # Detect categorical columns
-                if df[col].nunique() < 100:  # Increased limit slightly
+                # Detect categorical columns: Allow text categories, bounding cardinality to 300 to avoid memory exhaustion
+                if df[col].nunique() < 300: 
                     categorical_columns.append(col)
 
         
@@ -125,22 +137,53 @@ if uploaded_file is not None:
     
     # Create filters for categorical columns
     filter_columns = {}
-    for col in cat_cols[:5]:  # Limit to first 5 categorical columns
-        # Filter out nulls and convert to string for sorting to avoid type errors
-        unique_vals = [str(x) for x in df[col].dropna().unique()]
-        if len(unique_vals) > 0:
-            options = sorted(unique_vals)
-            filter_columns[col] = st.sidebar.multiselect(
-                f"Select {col}",
-                options=options,
-                default=options
-            )
+    
+    # We purposefully exclude high-cardinality metadata (e.g. IDs with thousands of rows) from Sidebar multiselects to protect performance
+    viable_filter_cols = [c for c in cat_cols if df[c].nunique() > 0 and df[c].nunique() <= 60]
+    
+    for col in viable_filter_cols[:5]:  # Limit to first 5 valid categorical columns
+        options = sorted([str(x) for x in df[col].dropna().unique()])
+        filter_columns[col] = st.sidebar.multiselect(
+            f"Select {col}",
+            options=options,
+            default=options
+        )
     
     # Apply filters
     df_filtered = df.copy()
+    
+    # 1. Categorical Filters
     for col, selected_vals in filter_columns.items():
         if selected_vals:
             df_filtered = df_filtered[df_filtered[col].astype(str).isin(selected_vals)]
+            
+    # 2. Global Date Filter (Filters out epoch anomalies like 1970 by default)
+    if date_cols:
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("📅 Date Range")
+        primary_date = date_cols[0]
+        
+        # Safely determine valid date bounds - ignoring epoch parsing artifacts (year <= 1970)
+        valid_dates = df_filtered[primary_date].dropna()
+        valid_dates = valid_dates[valid_dates.dt.year > 1970]
+        
+        if not valid_dates.empty:
+            min_date = valid_dates.min().date()
+            max_date = valid_dates.max().date()
+            
+            if min_date < max_date:
+                start_date, end_date = st.sidebar.slider(
+                    "Filter Timeframe",
+                    min_value=min_date,
+                    max_value=max_date,
+                    value=(min_date, max_date)
+                )
+                
+                # Apply the chronological constraint globally across the dashboard
+                df_filtered = df_filtered[
+                    (df_filtered[primary_date].dt.date >= start_date) & 
+                    (df_filtered[primary_date].dt.date <= end_date)
+                ]
     
     # Check if data is available
     if df_filtered.empty:
@@ -201,10 +244,32 @@ if uploaded_file is not None:
             date_choice = st.selectbox("Select Date Column", date_cols, key="line_date")
             num_choice_trend = st.selectbox("Select Metric", numeric_cols, key="line_num")
             
-            # Group by date
-            time_data = df_filtered.groupby(date_choice)[num_choice_trend].sum().reset_index()
+            # Allow user to select chronological aggregation level
+            agg_level = st.selectbox("Aggregation Level", ["Daily", "Weekly", "Monthly", "Yearly"], index=2, key="line_agg")
+            
+            # Drop invalid dates and proactively remove any remaining zero-epoch parsing artifacts
+            df_trend = df_filtered.dropna(subset=[date_choice]).copy()
+            df_trend = df_trend[df_trend[date_choice].dt.year > 1970]
+            df_trend = df_trend.sort_values(by=date_choice)
+            
+            # Resample dates based on selection to reduce data points
+            if agg_level == "Daily":
+                df_trend[date_choice] = df_trend[date_choice].dt.floor('D')
+            elif agg_level == "Weekly":
+                df_trend[date_choice] = df_trend[date_choice].dt.to_period('W').dt.start_time
+            elif agg_level == "Monthly":
+                df_trend[date_choice] = df_trend[date_choice].dt.to_period('M').dt.start_time
+            elif agg_level == "Yearly":
+                df_trend[date_choice] = df_trend[date_choice].dt.to_period('Y').dt.start_time
+            
+            # Group by resampled date
+            time_data = df_trend.groupby(date_choice)[num_choice_trend].sum().reset_index()
+            
+            # Turn off markers for very large datasets to prevent visually broken graphs
+            use_markers = len(time_data) <= 60
+            
             fig_line = px.line(time_data, x=date_choice, y=num_choice_trend,
-                             markers=True, template='plotly_white')
+                             markers=use_markers, template='plotly_white')
             st.plotly_chart(fig_line, use_container_width=True)
         else:
             st.info("💡 Requires at least one date and one numeric column.")
