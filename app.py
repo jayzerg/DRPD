@@ -19,23 +19,23 @@ def inject_modern_ui_css():
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Light Mode Tokens */
+  /* Light Mode Tokens — Eye-friendly, reduced contrast */
   --color-primary: #3b82f6;
   --color-primary-hover: #2563eb;
   --color-primary-active: #1d4ed8;
-  --color-surface: #ffffff;
-  --color-surface-elevated: #f9fafb;
-  --color-bg: #f3f4f6;
-  --color-text: #111827;
-  --color-text-muted: #6b7280;
-  --color-border: rgba(0, 0, 0, 0.08);
+  --color-surface: #f8f9fa;
+  --color-surface-elevated: #f1f3f5;
+  --color-bg: #e9ecef;
+  --color-text: #212529;
+  --color-text-muted: #6c757d;
+  --color-border: rgba(0, 0, 0, 0.12);
   --color-focus: rgba(59, 130, 246, 0.5);
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.1);
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --font-stack: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
