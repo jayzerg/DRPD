@@ -185,6 +185,45 @@ def inject_modern_ui_css():
   background-color: var(--color-surface-elevated);
 }
 
+/* Sidebar Toggle Button — Always Visible */
+button[data-testid="stSidebarCollapseButton"],
+button[data-testid="stSidebarExpandButton"] {
+  background-color: var(--color-primary) !important;
+  color: #ffffff !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 50% !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: var(--shadow-md) !important;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast) !important;
+  z-index: 9999 !important;
+}
+
+button[data-testid="stSidebarCollapseButton"]:hover,
+button[data-testid="stSidebarExpandButton"]:hover {
+  background-color: var(--color-primary-hover) !important;
+  box-shadow: var(--shadow-lg) !important;
+  transform: scale(1.1) !important;
+}
+
+button[data-testid="stSidebarCollapseButton"]:active,
+button[data-testid="stSidebarExpandButton"]:active {
+  transform: scale(0.95) !important;
+}
+
+/* Ensure toggle icon is visible */
+button[data-testid="stSidebarCollapseButton"] svg,
+button[data-testid="stSidebarExpandButton"] svg {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
 /* Expander Styling */
 [data-testid="stExpander"] {
   border: 1px solid var(--color-border);
