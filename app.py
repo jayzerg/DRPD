@@ -197,6 +197,42 @@ def inject_modern_ui_css():
   box-shadow: var(--shadow-md);
 }
 
+/* Radio Button Styling — High Contrast for Theme Selector */
+.stRadio > label {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.75rem;
+}
+
+.stRadio [data-baseweb="radio"] {
+  background-color: var(--color-surface) !important;
+  border: 2px solid var(--color-border) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 0.5rem 0.75rem !important;
+  margin: 0.25rem 0 !important;
+  transition: all var(--transition-fast) ease;
+}
+
+.stRadio [data-baseweb="radio"]:hover {
+  border-color: var(--color-primary) !important;
+  background-color: var(--color-surface-elevated) !important;
+}
+
+.stRadio [data-baseweb="radio"][aria-checked="true"] {
+  border-color: var(--color-primary) !important;
+  background-color: var(--color-primary) !important;
+}
+
+.stRadio [data-baseweb="radio"][aria-checked="true"] label {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.stRadio [data-baseweb="radio"] label {
+  color: var(--color-text) !important;
+  font-weight: 500;
+}
+
 /* Multiselect Tags */
 span[data-baseweb="tag"] {
   background-color: var(--color-primary) !important;
@@ -357,7 +393,14 @@ if uploaded_file is not None:
     
     # Enterprise Dashboard Customization — Theme Sync with UI Layer
     with st.sidebar.expander("⚙️ Dashboard Preferences", expanded=False):
-        theme_choice = st.radio("Color Theme", ["Light (Plotly White)", "Dark (Plotly Dark)"], index=0, key="theme_selector")
+        st.markdown("### 🎨 Appearance")
+        theme_choice = st.radio(
+            "Color Theme", 
+            ["☀️ Light Mode", "🌙 Dark Mode"], 
+            index=0, 
+            key="theme_selector",
+            label_visibility="collapsed"
+        )
         # Sync session state for theme switching
         if "theme" not in st.session_state:
             st.session_state.theme = theme_choice
