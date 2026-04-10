@@ -8,112 +8,323 @@ from datetime import datetime
 # Page configuration
 st.set_page_config(page_title="Dynamic Retail Dashboard", layout="wide", page_icon="📊")
 
-# ── Executive Slate Design System (Theme-Adaptive) ─────────────────────
-st.markdown("""
+# === CSS INJECTION & THEME SYNC ===
+def inject_modern_ui_css():
+    """Inject modern, accessible, theme-aware CSS via inline <style> block."""
+    st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    /* ── Base Typography ─────────────────────────────────── */
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-    
-    h1 { font-weight: 700; letter-spacing: -0.03em; }
-    h2 { font-weight: 600; letter-spacing: -0.02em; font-size: 1.3rem; }
-    h3 { font-weight: 500; }
-    
-    /* ── KPI Metric Cards ────────────────────────────────── */
-    [data-testid="stMetric"] {
-        background: rgba(128, 128, 128, 0.06);
-        border-radius: 12px;
-        padding: 1rem 1.2rem;
-        border: 1px solid rgba(128, 128, 128, 0.15);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    }
-    [data-testid="stMetricLabel"] {
-        font-size: 0.8rem !important;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        opacity: 0.65;
-    }
-    [data-testid="stMetricValue"] {
-        font-weight: 700 !important;
-    }
-    
-    /* ── Sidebar ─────────────────────────────────────────── */
-    [data-testid="stSidebar"] {
-        border-right: 1px solid rgba(128, 128, 128, 0.15);
-    }
-    
-    /* ── Expanders ────────────────────────────────────────── */
-    [data-testid="stExpander"] {
-        border: 1px solid rgba(128, 128, 128, 0.15);
-        border-radius: 12px;
-    }
-    
-    /* ── Multiselect Tags (replaces default red) ─────────── */
-    span[data-baseweb="tag"] {
-        background-color: #3b82f6 !important;
-        color: #ffffff !important;
-        border-radius: 6px !important;
-        border: none !important;
-    }
-    span[data-baseweb="tag"]:hover {
-        background-color: #2563eb !important;
-    }
-    /* Tag close button */
-    span[data-baseweb="tag"] span[role="presentation"] {
-        color: rgba(255, 255, 255, 0.75) !important;
-    }
-    span[data-baseweb="tag"] span[role="presentation"]:hover {
-        color: #ffffff !important;
-    }
-    
-    /* ── Download Button ─────────────────────────────────── */
-    .stDownloadButton button {
-        background: #3b82f6 !important;
-        color: white !important;
-        border-radius: 8px;
-        font-weight: 500;
-        border: none !important;
-        transition: all 0.2s ease;
-    }
-    .stDownloadButton button:hover {
-        background: #2563eb !important;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
-    }
-    
-    /* ── Tab Navigation ──────────────────────────────────── */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0.5rem;
-        border-bottom: 2px solid rgba(128, 128, 128, 0.2);
-    }
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px 8px 0 0;
-        padding: 0.6rem 1.2rem;
-        font-weight: 500;
-    }
-    
-    /* ── Alerts ───────────────────────────────────────────── */
-    [data-testid="stAlert"] {
-        border-radius: 10px;
-        border-left-width: 4px;
-    }
-    
-    /* ── Dividers ─────────────────────────────────────────── */
-    hr {
-        border: none;
-        height: 1px;
-        background: linear-gradient(to right, transparent, rgba(128, 128, 128, 0.25), transparent);
-        margin: 1.5rem 0;
-    }
-    
-    /* ── Cleanup ──────────────────────────────────────────── */
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
+/* ═══════════════════════════════════════════════════════════════════
+   MODERN RETAIL DASHBOARD — DESIGN TOKENS & THEME SYSTEM
+   Inline CSS only. Zero external deps. WCAG-safe. Hardware-accelerated.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Light Mode Tokens */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-active: #1d4ed8;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f9fafb;
+  --color-bg: #f3f4f6;
+  --color-text: #111827;
+  --color-text-muted: #6b7280;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-focus: rgba(59, 130, 246, 0.5);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08);
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --font-stack: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+[data-theme="dark"] {
+  /* Dark Mode Tokens — Aligned with Streamlit native dark palette */
+  --color-primary: #60a5fa;
+  --color-primary-hover: #93c5fd;
+  --color-primary-active: #bfdbfe;
+  --color-surface: #1e1e1e;
+  --color-surface-elevated: #262730;
+  --color-bg: #0e1117;
+  --color-text: #fafafa;
+  --color-text-muted: #9ca3af;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-focus: rgba(96, 165, 250, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Base App Container Optimization */
+.stApp {
+  font-family: var(--font-stack);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  max-width: 100%;
+  padding: 0;
+}
+
+/* Smooth content fade-in on load */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn var(--transition-base) ease-out forwards;
+}
+
+/* Accessible Focus States */
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Reduced Motion Compliance */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .fade-in { animation: none !important; }
+}
+
+/* Modern Button Styling */
+.stButton > button {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1.25rem;
+  font-weight: 500;
+  font-family: var(--font-stack);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+.stButton > button:hover {
+  background-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.stButton > button:active {
+  background-color: var(--color-primary-active);
+  transform: translateY(0);
+}
+
+/* Tabs Modernization */
+.stTabs [data-baseweb="tab-list"] {
+  gap: 0.75rem;
+  border-bottom: 2px solid var(--color-border);
+  padding-bottom: 0;
+}
+
+.stTabs [data-baseweb="tab"] {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  padding: 0.65rem 1.25rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+  color: var(--color-text);
+  background-color: transparent;
+}
+
+.stTabs [aria-selected="true"] {
+  color: var(--color-primary);
+  background-color: transparent;
+}
+
+/* DataFrame / Table Containers */
+.stDataFrame {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  background-color: var(--color-surface);
+}
+
+/* Metric Cards Enhancement */
+[data-testid="stMetric"] {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-base), transform var(--transition-fast);
+}
+
+[data-testid="stMetric"]:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+[data-testid="stMetricLabel"] {
+  font-size: 0.75rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+[data-testid="stMetricValue"] {
+  font-weight: 700 !important;
+  color: var(--color-text);
+}
+
+/* Sidebar Refinement */
+[data-testid="stSidebar"] {
+  border-right: 1px solid var(--color-border);
+  background-color: var(--color-surface-elevated);
+}
+
+/* Expander Styling */
+[data-testid="stExpander"] {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  transition: box-shadow var(--transition-base);
+}
+
+[data-testid="stExpander"]:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Multiselect Tags */
+span[data-baseweb="tag"] {
+  background-color: var(--color-primary) !important;
+  color: #ffffff !important;
+  border-radius: var(--radius-sm) !important;
+  border: none !important;
+  font-weight: 500;
+}
+
+span[data-baseweb="tag"]:hover {
+  background-color: var(--color-primary-hover) !important;
+}
+
+span[data-baseweb="tag"] span[role="presentation"] {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+span[data-baseweb="tag"] span[role="presentation"]:hover {
+  color: #ffffff !important;
+}
+
+/* Download Button */
+.stDownloadButton > button {
+  background-color: var(--color-primary);
+  color: #ffffff !important;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  border: none !important;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+.stDownloadButton > button:hover {
+  background-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Alerts */
+[data-testid="stAlert"] {
+  border-radius: var(--radius-md);
+  border-left-width: 4px;
+  border-left-color: var(--color-primary);
+}
+
+/* Dividers */
+hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-border), transparent);
+  margin: 1.5rem 0;
+}
+
+/* Utility Card Class for KPI/Section Wrappers */
+.ui-card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-base), transform var(--transition-fast);
+}
+
+.ui-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* Cleanup: Hide Streamlit default elements */
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+header { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
-# Executive Color Palette
-EXEC_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16']
+def sync_ui_theme(mode: str = "Light"):
+    """
+    Sync UI theme between Streamlit session state and DOM data-theme attribute.
+    Idempotent: prevents duplicate script injection on rerenders.
+    """
+    if "theme" not in st.session_state:
+        st.session_state.theme = mode
+    
+    is_dark = "Dark" in st.session_state.theme
+    
+    # Inject theme sync script only once per session
+    if "_theme_synced" not in st.session_state:
+        st.session_state._theme_synced = True
+        theme_script = """
+<script>
+(function() {
+  var appContainer = document.querySelector('.stApp');
+  if (appContainer) {
+    if (""" + ("true" if is_dark else "false") + """) {
+      appContainer.setAttribute('data-theme', 'dark');
+    } else {
+      appContainer.removeAttribute('data-theme');
+    }
+  }
+})();
+</script>
+"""
+        st.markdown(theme_script, unsafe_allow_html=True)
+
+def get_modern_plotly_config(theme_mode: str) -> dict:
+    """
+    Return optimized Plotly config dict matching the CSS design tokens.
+    Theme-aware template selection with transparent backgrounds.
+    """
+    is_dark = "Dark" in theme_mode
+    return {
+        "plot_bgcolor": "rgba(0,0,0,0)",
+        "paper_bgcolor": "rgba(0,0,0,0)",
+        "font": {
+            "family": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+            "size": 12,
+            "color": "#fafafa" if is_dark else "#111827"
+        },
+        "hovermode": "x unified",
+        "margin": {"t": 30, "b": 40, "l": 50, "r": 20},
+        "template": "plotly_dark" if is_dark else "plotly_white",
+        "colorway": ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"],
+        "xaxis": {"showgrid": True, "gridcolor": "rgba(128,128,128,0.1)"},
+        "yaxis": {"showgrid": True, "gridcolor": "rgba(128,128,128,0.1)"}
+    }
+
+# Initialize CSS and theme on first load
+inject_modern_ui_css()
 
 # Title
 st.title("📊 Dynamic Retail Performance Dashboard")
@@ -144,10 +355,17 @@ if uploaded_file is not None:
 
     df = load_data(uploaded_file, skip_rows)
     
-    # Enterprise Dashboard Customization
+    # Enterprise Dashboard Customization — Theme Sync with UI Layer
     with st.sidebar.expander("⚙️ Dashboard Preferences", expanded=False):
-        theme_choice = st.radio("Color Theme", ["Light (Plotly White)", "Dark (Plotly Dark)"], index=0)
+        theme_choice = st.radio("Color Theme", ["Light (Plotly White)", "Dark (Plotly Dark)"], index=0, key="theme_selector")
+        # Sync session state for theme switching
+        if "theme" not in st.session_state:
+            st.session_state.theme = theme_choice
+        else:
+            st.session_state.theme = theme_choice
+        sync_ui_theme(st.session_state.theme)
         global_theme = "plotly_white" if "Light" in theme_choice else "plotly_dark"
+        # EXEC_COLORS now defined in get_modern_plotly_config for consistency
 
     # Auto-detect column types
     def detect_column_types(df):
@@ -400,9 +618,10 @@ if uploaded_file is not None:
                 num_choice = c2.selectbox("Metric", numeric_cols, key="bar_num")
                 
                 agg_data = df_filtered.groupby(cat_choice)[num_choice].sum().reset_index()
+                plotly_config = get_modern_plotly_config(theme_choice)
                 fig_bar = px.bar(agg_data, x=cat_choice, y=num_choice, 
                                color=cat_choice, template=global_theme,
-                               color_discrete_sequence=EXEC_COLORS)
+                               color_discrete_sequence=plotly_config["colorway"])
                 fig_bar.update_layout(showlegend=False)
                 st.plotly_chart(fig_bar, use_container_width=True)
             else:
@@ -507,8 +726,9 @@ if uploaded_file is not None:
                 num_pie = p2.selectbox("Value Column", numeric_cols, key="pie_num")
                 
                 pie_data = df_filtered.groupby(cat_pie)[num_pie].sum().reset_index()
+                plotly_config = get_modern_plotly_config(theme_choice)
                 fig_pie = px.pie(pie_data, values=num_pie, names=cat_pie,
-                               template=global_theme, color_discrete_sequence=EXEC_COLORS)
+                               template=global_theme, color_discrete_sequence=plotly_config["colorway"])
                 st.plotly_chart(fig_pie, use_container_width=True)
             else:
                 st.info("💡 Requires at least one categorical and one numeric column.")
